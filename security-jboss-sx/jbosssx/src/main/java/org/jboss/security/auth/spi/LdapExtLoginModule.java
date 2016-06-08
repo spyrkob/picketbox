@@ -460,7 +460,7 @@ public class LdapExtLoginModule extends UsernamePasswordLoginModule
       InitialLdapContext ctx = null;
       try
       {
-         ctx = constructInitialLdapContext(bindDN, bindCredential);
+         ctx = constructInitialLdapContext(relativeDN(bindDN), bindCredential);
          // Validate the user by binding against the userDN
          String userDN = bindDNAuthentication(ctx, username, credential, baseDN, baseFilter);
 
@@ -557,8 +557,9 @@ public class LdapExtLoginModule extends UsernamePasswordLoginModule
       if (userDN == null)
       {
           if (sr.isRelative() == true) {
-              userDN = new CompositeName(name).get(0) + ("".equals(baseDN) ? "" : "," + baseDN);
-              // SECURITY-225: don't need to authenticate again
+              userDN = relativeDN(new CompositeName(name).get(0) + ("".equals(baseDN) ? "" : "," + baseDN));
+
+             // SECURITY-225: don't need to authenticate again
               if (isPasswordValidated)
               {
                  // Bind as the user dn to authenticate the user
@@ -583,6 +584,30 @@ public class LdapExtLoginModule extends UsernamePasswordLoginModule
       }
 
       return userDN;
+   }
+
+   private String relativeDN(String dn) {
+      final String rootDN;
+      try {
+         rootDN = getProviderDN((String) options.get(Context.PROVIDER_URL));
+         return rootDN == null ? dn:(dn + "," + rootDN);
+      } catch (URISyntaxException e) {
+         return dn;
+      }
+
+   }
+
+   private String getProviderDN(String providerURL) throws URISyntaxException {
+      if (providerURL == null)
+         return null;
+
+      String path = new URI(providerURL).getRawPath();
+
+      if (path != null && path.startsWith("/")) {
+         path = path.substring(1);
+      }
+
+      return path.isEmpty()?null:path;
    }
 
    /**

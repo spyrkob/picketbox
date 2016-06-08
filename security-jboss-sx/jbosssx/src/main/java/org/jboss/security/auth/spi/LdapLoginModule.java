@@ -21,6 +21,8 @@
 */
 package org.jboss.security.auth.spi;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.Principal;
 import java.security.acl.Group;
 import java.util.Arrays;
@@ -347,6 +349,14 @@ public class LdapLoginModule extends UsernamePasswordLoginModule
       String matchType = (String) options.get(MATCH_ON_USER_DN_OPT);
       boolean matchOnUserDN = Boolean.valueOf(matchType).booleanValue();
       String userDN = principalDNPrefix + username + principalDNSuffix;
+
+      String rootDN = getProviderDN(providerURL);
+
+      if (rootDN != null) {
+         userDN += "," + rootDN;
+         System.out.println("!!!!!!! " + userDN);
+      }
+
       env.setProperty(Context.PROVIDER_URL, providerURL);
       env.setProperty(Context.SECURITY_PRINCIPAL, userDN);
       env.put(Context.SECURITY_CREDENTIALS, credential);
@@ -539,6 +549,19 @@ public class LdapLoginModule extends UsernamePasswordLoginModule
          if (currentTCCL != null)
             SecurityActions.setContextClassLoader(currentTCCL);
       }
+   }
+
+   private String getProviderDN(String providerURL) throws URISyntaxException {
+      if (providerURL == null)
+         return null;
+
+      String path = new URI(providerURL).getRawPath();
+
+      if (path != null && path.startsWith("/")) {
+         path = path.substring(1);
+      }
+
+      return path.isEmpty()?null:path;
    }
 
    private void addRole(String roleName)
